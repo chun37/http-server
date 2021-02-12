@@ -1,6 +1,7 @@
 import socket
 from dataclasses import dataclass
 from typing import Optional
+from pathlib import Path
 
 
 @dataclass
@@ -64,16 +65,52 @@ class RequestHandler:
         return self.route.get(path)
 
 
-def return_simple_html():
-    with open("simple.html", "rb") as f:
-        file_data = f.read()
-    return file_data
+html_template = """
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>{}</title>
+    </head>
+    <body>
+        {}
+    </body>
+</html>
+"""[
+    1:-1
+]
+
+
+@dataclass
+class FileServer:
+    path: str
+
+    def get_html(self):
+        target_path = Path(f".{self.path}")
+        if target_path.exists() is False:
+            return None
+
+        if target_path.is_dir():
+            inner_html = self.get_directories_html(target_path)
+        else:
+            inner_html = self.get_file_html(target_path)
+
+        return html_template.format(self.path, inner_html)
+
+    def get_file_html(self, file):
+        return file.read_text()
+
+    def get_li_tag(self, file):
+        return (
+            f'<li><a href="/{file}">{file.name}{"/" if file.is_dir() else ""}</a></li>'
+        )
+
+    def get_directories_html(self, file):
+        files = file.glob("*")
+        return "<ul>\n" + "\n".join(self.get_li_tag(f) for f in files) + "\n</ul>"
 
 
 if __name__ == "__main__":
-    request_handler = RequestHandler({})
-    request_handler.add("/html", return_simple_html)
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((socket.gethostname(), 1235))
         s.listen(5)
@@ -84,10 +121,13 @@ if __name__ == "__main__":
                 http_header = read_http_header(client_socket)
                 request_line = http_header[0]
                 METHOD, PATH, HTTP_VERSION = request_line.split()
+                print(PATH)
 
-                response = HTTPResponse(1.0, 200, "OK")
-                if (func := request_handler.get_function(PATH)) is not None:
-                    content = func()
-                    response.set_content(content)
+                html = FileServer(PATH).get_html()
+                if html is None:
+                    response = HTTPResponse(1.0, 404, "Not Found")
+                else:
+                    response = HTTPResponse(1.0, 200, "OK")
+                    response.set_content(html.encode("utf-8"))
 
                 client_socket.send(response.to_bytes())
