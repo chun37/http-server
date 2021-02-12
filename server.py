@@ -98,7 +98,7 @@ class FileServer:
         return html_template.format(self.path, inner_html)
 
     def get_file_html(self, file):
-        return file.read_text()
+        return f'<pre style="word-wrap: break-word; white-space: pre-wrap;">{file.read_text()}</pre>'
 
     def get_li_tag(self, file):
         return (
