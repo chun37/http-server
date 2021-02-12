@@ -81,9 +81,9 @@ html_template = """
 ]
 
 
-@dataclass
 class FileServer:
-    path: str
+    def __init__(self, path):
+        self.path = path
 
     def get_html(self):
         target_path = Path(f".{self.path}")
