@@ -54,17 +54,6 @@ def read_http_header(s, decoded=""):
     return decoded.split("\r\n")
 
 
-@dataclass
-class RequestHandler:
-    route: dict[str, callable]
-
-    def add(self, path, function):
-        self.route[path] = function
-
-    def get_function(self, path):
-        return self.route.get(path)
-
-
 html_template = """
 <!DOCTYPE html>
 <html lang="ja">
